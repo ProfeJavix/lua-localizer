@@ -1,8 +1,14 @@
 {
   "name": "lua-localizer",
   "displayName": "Lua Localizer",
-  "description": "Localize the global functions you use from your Workspace Library",
+  "description": "Localize the function calls in the current file.",
   "version": "0.0.1",
+  "publisher": "ProfeJavix",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ProfeJavix/lua-localizer.git"
+  },
+  "icon": "images/extension-icon.png",
   "engines": {
     "vscode": "^1.106.0"
   },
@@ -19,6 +25,14 @@
       {
         "command": "lua-localizer.localize",
         "title": "Lua: Localize Functions"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "lua-localizer.localize",
+        "key": "ctrl+shift+alt+l",
+        "mac": "cmd+shift+alt+l",
+        "when": "editorTextFocus"
       }
     ]
   },
