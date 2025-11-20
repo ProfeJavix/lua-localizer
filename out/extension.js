@@ -46,7 +46,7 @@ const luaMetaDirs = [
 ];
 const funcRegex = /function\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\(/g;
 const assignFuncRegex = /([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*=\s*function\s*\(/g;
-const callRegex = /([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)\s*\(/g;
+const callRegex = /(?:--\[\[[\s\S]*?\]\]|--.*$|'(?:\\.|[^'])*'|"(?:\\.|[^"])*"|\b(?:local\s+)?function\s+[A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*\s*\()|\b([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)\s*\(/g;
 const localizedRegex = /local\s+(\w+)\s*=\s*([\w\.]+)/g;
 const regionRegex = /--#region Localizations[^\n]*([\s\S]*?)--#endregion[^\n]*/;
 const getLuaExtensionPathsInDir = (dir, allPaths) => {
@@ -142,7 +142,7 @@ function activate(context) {
         let match;
         while ((match = callRegex.exec(selectedText))) {
             const call = match[1];
-            if (defs.has(call)) {
+            if (call && defs.has(call)) {
                 calls.add(match[1]);
             }
         }
@@ -151,24 +151,22 @@ function activate(context) {
             return;
         }
         await editor.edit(editBuilder => {
-            docText = doc.getText();
-            const replacements = [];
-            calls.forEach(call => {
-                if (localizedCalls.has(call))
-                    return;
-                let index = 0;
-                while ((index = docText.indexOf(call, index)) !== -1) {
-                    replacements.push({
-                        range: new vscode.Range(doc.positionAt(index), doc.positionAt(index + call.length)),
-                        str: defs.get(call)
-                    });
-                    index += call.length;
+            const selectionStart = doc.getText().indexOf(selectedText);
+            const newLocals = new Set();
+            while ((match = callRegex.exec(selectedText))) {
+                const call = match[1];
+                if (!call) {
+                    continue;
                 }
-            });
-            replacements.forEach(r => {
-                editBuilder.replace(r.range, r.str);
-            });
-            vscode.window.showInformationMessage(`Localized functions: ${replacements.length}.`);
+                if (!calls.has(call) || localizedCalls.has(call)) {
+                    calls.delete(call);
+                    continue;
+                }
+                const index = selectionStart + match.index;
+                editBuilder.replace(new vscode.Range(doc.positionAt(index), doc.positionAt(index + call.length)), defs.get(call) || call);
+                newLocals.add(call);
+            }
+            vscode.window.showInformationMessage(`Localized functions: ${newLocals.size}.`);
         });
         await editor.edit(editBuilder => {
             calls.forEach(call => {
@@ -182,8 +180,7 @@ function activate(context) {
                     .sort()
                     .join('\n') +
                 '\n\n--#endregion --------------------------------------------------------------------------------';
-            docText = doc.getText();
-            regionFound = regionRegex.exec(docText);
+            regionFound = regionRegex.exec(doc.getText());
             if (regionFound) {
                 editBuilder.replace(new vscode.Range(doc.positionAt(regionFound.index), doc.positionAt(regionFound.index + regionFound[0].length)), regionContent);
             }
