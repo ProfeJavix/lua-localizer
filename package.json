@@ -24,7 +24,7 @@
     "commands": [
       {
         "command": "lua-localizer.localize",
-        "title": "Lua: Localize Functions"
+        "title": "Lua Localizer: Localize Functions"
       }
     ],
     "keybindings": [
